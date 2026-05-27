@@ -1,2 +1,2 @@
 # Truco-multiplayer
-Truco multiplayer game
+Truco local multiplayer game para a disciplina de Sistemas Operacionais
