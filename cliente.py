@@ -9,21 +9,21 @@ def main():
         # IP do servidor
         client.connect(("127.0.0.1", 1234)) #host local
 
-        # recebe a mensagem de boas-vindas do servidor
+        # Recebe a mensagem de boas-vindas do servidor
         boas_vindas = client.recv(1024).decode("utf-8")
         print("Servidor:", boas_vindas)
 
         while True:
-            # digita o palpite
+            # Digita o palpite
             palpite = input("Digite a senha (ou /sair): ")
 
             if not palpite:
                 continue
 
-            #Envia para o servidor
+            # Envia para o servidor
             client.send(palpite.encode("utf-8"))
 
-            #Recebe a resposta do servidor
+            # Recebe a resposta do servidor
             resposta = client.recv(1024).decode("utf-8")
             print("Servidor respondeu:", resposta)
 

@@ -31,7 +31,7 @@ class Baralho:
 
     def embaralha(self) -> None:
         '''
-        Embaralha as cartas baseada no método Fisher-Yates    
+        Embaralha as cartas baseada no método Fisher-Yates
         '''
         random.shuffle(self.cartas)
 
@@ -43,7 +43,7 @@ class Baralho:
         método aumenta a aleatoridade
         '''
         if len(self.cartas) < 0:
-            return Carta(-1, Naipe.OURO) #Carta inválida para evitar erros
+            return Carta(-1, Naipe.OURO) # Carta inválida para evitar erros
         index = random.randint(0, len(self.cartas) -1)
         
         carta = self.cartas[index]
@@ -58,3 +58,10 @@ class Baralho:
         '''
     
         self.__init__()
+
+# Compartilhado (no servidor) -> 
+# Partida -> Placar / Rodada_Atual
+# Rodada_Atual -> vez: int, pé: int / Mesa / Valor (1, 3, 6, 9, 12) / Contador_Quedas: 
+# Mesa -> list[Cartas], vira: Carta
+# Vez -> inteiro com id do jogador
+# Jogador -> list[Carta], método de mudar valor da rodada, método de jogar carta (booleano no parâmetro se encobre ou nao)
