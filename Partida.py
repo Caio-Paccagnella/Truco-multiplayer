@@ -60,10 +60,35 @@ class Mesa:
     
     def reseta_mesa(self):
         self.jogadas.clear()
-        self.vira = Carta(-1, Naipe.OURO) # Inválido no começo   
+        # self.vira = Carta(-1, Naipe.OURO) # Inválido no começo   
     
-    def avalia_vencedor_mesa(self):
-        pass
+    def avalia_vencedor_mesa(self) -> Resultado_Queda:
+        aux = self.jogadas.keys()
+        verifi: list[tuple[int, Carta]] = []
+        for n in aux: #faço isso aqui e nao na chave direto para validar o inteiro certo caso nao venha o padrao
+            #pega as cartas validas (nao viradas)
+            c, encoberta = self.jogadas[n]
+            if not encoberta:
+                verifi.append((n, c))
+        
+        # aq funciona so para 2 players:
+        if len(verifi) == 2:
+            id_jog1, carta1 = verifi[0]
+            id_jog2, carta2 = verifi[1]
+            carta_maior = compara_carta(carta1, carta2, self.vira)
+            
+            # Se a função retornar None, ocorreu um empate (cartas de mesma força)
+            if carta_maior is None:
+                return Resultado_Queda.EMPATE
+                
+            id_vencedor = id_jog1 if carta_maior == carta1 else id_jog2
+            return Resultado_Queda.VITORIA_TIME1 if id_vencedor == 0 else Resultado_Queda.VITORIA_TIME2
+        elif len(verifi) == 1:
+            #aqui o id tem que ser 0 do jogador 1
+            return Resultado_Queda.VITORIA_TIME1 if verifi[0][0] == 0 else Resultado_Queda.VITORIA_TIME2
+        else: #elif verifi == []:
+            return Resultado_Queda.EMPATE
+
 
 def compara_carta(carta1: Carta, carta2: Carta, vira: Carta) -> Carta | None:
     
@@ -188,7 +213,7 @@ class Partida:
     def __init__(self, num_jogadores: int = 2):
         self.placar = Placar(0, 0)
         # Cria os jogadores com IDs de 0 até num_jogadores-1
-        self.jogadores = [Jogador(id_player=i) for i in range(num_jogadores)]
+        self.jogadores = [Jogador(i) for i in range(num_jogadores)]
         
         # Inicia a primeira rodada passando os jogadores
         self.rodada_atual = Rodada(self.jogadores)
