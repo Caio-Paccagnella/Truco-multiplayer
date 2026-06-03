@@ -223,3 +223,6 @@ class Partida:
             self.placar.time1 += valor_rodada
         else:
             self.placar.time2 += valor_rodada
+
+    def get_placar(self):
+        return self.placar
