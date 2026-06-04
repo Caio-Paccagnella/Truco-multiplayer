@@ -1,8 +1,6 @@
 #Esta biblioteca representa a implementação de um tipo abstrato baralho
-from dataclasses import dataclass
-from enum import Enum
+from Carta import Carta, Naipe
 import random
-
 
 
 class Baralho:
