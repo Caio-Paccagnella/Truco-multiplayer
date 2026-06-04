@@ -27,7 +27,6 @@ class Jogador:
         self.cartas = lst
 
     def joga_carta(self, c: Carta):
-        
         self.cartas.remove(c)
 
     def get_cartas(self):
