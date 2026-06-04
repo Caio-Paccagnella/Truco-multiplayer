@@ -28,7 +28,8 @@ class Partida:
         self.nova_rodada()
         
     def nova_rodada(self):
-        self.rodada_atual = Rodada(self.jogadores, self.id_pe)
+        alguem_com_onze = self.placar.time1 == 11 or self.placar.time2 == 11
+        self.rodada_atual = Rodada(self.jogadores, self.id_pe, alguem_com_onze)
         self.rodada_atual.inicia_rodada() 
          
     def recebe_comando_carta(self, id_jogador: int, indice_carta: int, encoberta: bool):

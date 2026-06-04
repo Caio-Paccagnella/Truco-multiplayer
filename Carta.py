@@ -26,7 +26,7 @@ class Carta:
         elif outra.valor == valor_manilha and self.valor != valor_manilha:
             return outra
         elif self.valor == valor_manilha and outra.valor == valor_manilha:
-            if self.naipe.value >= self.naipe.value:
+            if self.naipe.value >= outra.naipe.value:
                 return self
             else:
                 return outra
