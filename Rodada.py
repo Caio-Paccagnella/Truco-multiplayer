@@ -7,7 +7,6 @@ from Jogador import Jogador
 class EstadoRodada(Enum):
     NORMAL = 0
     AGUARDANDO_RESPOSTA = 1
-    FINALIZADA = 2
     
 class Rodada:
 
@@ -21,12 +20,14 @@ class Rodada:
     id_jogador_inicio: int
     id_jogador_aumentou_valor: int
     valor_apostado: int
-
-    def __init__(self, jogadores: list[Jogador], id_pe_inicial: int):
+    eh_mao_onze: bool
+    
+    def __init__(self, jogadores: list[Jogador], id_pe_inicial: int, mao_onze: bool):
         self.jogadores = jogadores
         self.pe = id_pe_inicial
         self.vez = (self.pe + 1) % len(self.jogadores)
         self.id_jogador_inicio = self.vez
+        self.eh_mao_onze = mao_onze
         self.mesa = Mesa()
         self.baralho = Baralho()
         self.reseta_rodada()
@@ -34,6 +35,8 @@ class Rodada:
     
     def reseta_rodada(self):
         self.valor_apostado = 1
+        if self.eh_mao_onze:
+            self.valor_apostado = 3
         self.contador_quedas = [Resultado_Queda.NULO] * 3
         self.estado = EstadoRodada.NORMAL
         self.id_jogador_aumentou_valor = -1
@@ -50,6 +53,8 @@ class Rodada:
         
     def pode_aumento(self, id_jogador_atual: int) -> bool:
         # Verifica se um jogador pode aumentar o valor apostado.
+        if self.eh_mao_onze:
+            return False
         if self.valor_apostado == 12:
             return False
         if self.valor_apostado == 1:
@@ -72,7 +77,11 @@ class Rodada:
         self.valor_apostado = self.verifica_valor_aumento()
         self.estado = EstadoRodada.NORMAL
             
-    def computa_jogada(self, id_jogador: int, carta: Carta, encoberta: bool) -> bool:
+    def computa_jogada(self, id_jogador: int, indice_carta: int, encoberta: bool) -> bool:
+        
+        jogador: Jogador = self.jogadores[id_jogador]
+        carta: Carta = jogador.get_cartas() [indice_carta]
+        jogador.joga_carta(carta)
         self.mesa.recebe_jogada(id_jogador, carta, encoberta)
         self.vez = (self.vez + 1) % len(self.jogadores)
         
