@@ -15,22 +15,25 @@ class Placar:
     time2: int
 
 class Jogador:
+    # Representa um jogador com um ID e uma mão de cartas.
     id_player: int
     cartas: list[Carta]
-    
-    
-    def __init__(self, id):
+      
+    def __init__(self, id: int) -> None:
         self.id_player = id
         self.cartas = []
     
-    def recebe_cartas(self, lst: list[Carta]):
-        self.cartas = lst
+    def get_id(self) -> int:
+        return self.id_player
+    
+    def recebe_cartas(self, lst: list[Carta]) -> None:
+        self.cartas = lst[:]
 
-    def joga_carta(self, c: Carta):
+    def joga_carta(self, c: Carta) -> None:        
         self.cartas.remove(c)
 
-    def get_cartas(self):
-        return self.cartas
+    def get_cartas(self) -> list[Carta]:
+        return self.cartas[:]
 
 
     
@@ -89,27 +92,6 @@ class Mesa:
             return Resultado_Queda.EMPATE
 
 
-def compara_carta(carta1: Carta, carta2: Carta, vira: Carta) -> Carta | None:
-    
-    ordem_forca: list[int] = [4, 5, 6, 7, 8, 9, 10, 1, 2, 3]
-    indice_vira = ordem_forca.index(vira.valor)
-    indice_manilha = (indice_vira + 1) % len(ordem_forca)
-    valor_manilha = ordem_forca[indice_manilha]
-    
-    if carta1.valor == valor_manilha and carta2.valor != valor_manilha:
-        return carta1
-    elif carta2.valor == valor_manilha and carta1.valor != valor_manilha:
-        return carta2
-    elif carta1.valor == valor_manilha and carta2.valor == valor_manilha:
-        return carta1 if carta1.naipe.value > carta2.naipe.value else carta2
-    else:
-        indice_forca1: int = ordem_forca.index(carta1.valor)
-        indice_forca2: int = ordem_forca.index(carta2.valor)       
-        if indice_forca1 > indice_forca2:
-            return carta1
-        elif indice_forca2 > indice_forca1:
-            return carta2
-    return None
         
     
 class Rodada:

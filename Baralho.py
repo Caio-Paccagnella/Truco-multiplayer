@@ -1,18 +1,7 @@
 #Esta biblioteca representa a implementação de um tipo abstrato baralho
-from dataclasses import dataclass
-from enum import Enum
+from Carta import Carta, Naipe
 import random
 
-class Naipe(Enum):
-    OURO = 0
-    ESPADA = 1
-    COPAS = 2
-    PAUS = 3
-
-@dataclass
-class Carta:
-    valor: int
-    naipe: Naipe
 
 class Baralho:
     '''
@@ -42,14 +31,12 @@ class Baralho:
         OBS: mesmo que idealmente o usuário embaralhe antes, esse
         método aumenta a aleatoridade
         '''
-        if len(self.cartas) < 0:
+        if len(self.cartas) <= 0:
             return Carta(-1, Naipe.OURO) # Carta inválida para evitar erros
         index = random.randint(0, len(self.cartas) -1)
         
-        carta = self.cartas[index]
         self.cartas[index], self.cartas[-1] = self.cartas[-1], self.cartas[index]
-        self.cartas.pop()
-        return carta
+        return self.cartas.pop()
 
     def reconstroi(self):
         '''
@@ -59,9 +46,3 @@ class Baralho:
     
         self.__init__()
 
-# Compartilhado (no servidor) -> 
-# Partida -> Placar / Rodada_Atual
-# Rodada_Atual -> vez: int, pé: int / Mesa / Valor (1, 3, 6, 9, 12) / Contador_Quedas: 
-# Mesa -> list[Cartas], vira: Carta
-# Vez -> inteiro com id do jogador
-# Jogador -> list[Carta], método de mudar valor da rodada, método de jogar carta (booleano no parâmetro se encobre ou nao)
