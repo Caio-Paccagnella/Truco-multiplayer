@@ -72,5 +72,5 @@ class Partida:
             self.finalizada = True
         else:
             self.nova_rodada()
-            
+        
             
