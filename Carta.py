@@ -13,6 +13,17 @@ class Carta:
     valor: int
     naipe: Naipe
     
+    def __repr__(self) -> str:
+        traducao_valores = {
+            1: "A",
+            8: "Q",
+            9: "J",
+            10: "K"
+        }
+        # O segundo parâmetro é o padrão, caso a chave não exista.
+        nome_valor = traducao_valores.get(self.valor, str(self.valor))       
+        return f"{nome_valor} de {self.naipe.name}"
+    
     def compara_cartas(self, outra: Carta, vira: Carta) -> Carta | None:
         
         # Lógica considerando o Truco Paulista tradicional, sem manilha fixa:
