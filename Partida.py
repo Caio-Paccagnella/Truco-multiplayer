@@ -26,7 +26,10 @@ class Partida:
         self.id_pe = 0
         self.finalizada = False
         self.nova_rodada()
-        
+    
+    def get_finalizada(self):
+        return self.finalizada
+    
     def nova_rodada(self):
         alguem_com_onze = self.placar.time1 == 11 or self.placar.time2 == 11
         self.rodada_atual = Rodada(self.jogadores, self.id_pe, alguem_com_onze)
