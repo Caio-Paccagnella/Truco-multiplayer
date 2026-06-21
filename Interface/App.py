@@ -1,6 +1,5 @@
 """
-cliente_gui.py — Interface Tkinter para o jogo de Truco
-Substitui o cliente.py original com uma UI visual completa.
+Este arquivo representa o cliente, que se comecta ao servidor para jogar o truco
 """
 
 import tkinter as tk
@@ -12,7 +11,6 @@ import threading
 from multiprocessing.shared_memory import SharedMemory
 
 
-# ─────────────────────────── Paleta ───────────────────────────
 BG_FELT       = "#1B4D35"
 BG_DARK       = "#122E20"
 BG_CARD       = "#FAF6EE"
@@ -45,13 +43,16 @@ def naipe_simbolo(naipe_str: str) -> str:
     return "?"
 
 def cor_naipe(naipe_str: str) -> str:
-    if any(n in naipe_str.upper() for n in ("OURO", "COPAS")):
+    if any(n in naipe_str.upper() for n in ("OURO", "COPAS")): #aqui ele vê se naipe_str é copas o ouro
         return ACCENT_RED
-    return TEXT_DARK
+    return TEXT_DARK #se nao for copas ou ouro é espada ou paus ent é preto
 
 def parse_carta(carta_str: str):
+    '''
+    Faz o parse de *carta_str*, ou seja, pega o texto e retorna as características da carta
+    '''
     if carta_str == "?":
-        return "?", "VERSO", "?", TEXT_LIGHT
+        return "?", "VERSO", "?", TEXT_LIGHT 
     try:
         partes = carta_str.split(" de ")
         val = partes[0].strip()
@@ -61,12 +62,26 @@ def parse_carta(carta_str: str):
         return carta_str, "", "", TEXT_DARK
 
 
-# ─────────────────────────── Widget Carta ───────────────────────────
 class CartaWidget(tk.Canvas):
+    '''
+    Classe que representa uma carta visual, ou seja, o desenho de uma carta
+    baseada nas características de uma
+    '''
     WIDTH, HEIGHT = 80, 110
 
     def __init__(self, parent, carta_str="", selecionada=False,
                  encoberta=False, pequena=False, **kw):
+        """
+        Inicializa o widget da carta visual com dimensões e estados iniciais.
+
+        Argumentos:
+            parent (tk.Widget): O componente pai que conterá este canvas.
+            carta_str (str, opcional): Texto que define o valor e naipe da carta (ex: "As").
+            selecionada (bool, opcional): Define se a carta inicia com destaque de seleção. Defaults to False.
+            encoberta (bool, opcional): Define se a carta inicia virada para baixo (verso). Defaults to False.
+            pequena (bool, opcional): Se True, reduz o tamanho do widget em 30%. Defaults to False.
+            **kw: Argumentos nomeados adicionais repassados para a classe base tk.Canvas.
+        """
         w = int(self.WIDTH * 0.7) if pequena else self.WIDTH
         h = int(self.HEIGHT * 0.7) if pequena else self.HEIGHT
         super().__init__(parent, width=w, height=h,
@@ -80,6 +95,13 @@ class CartaWidget(tk.Canvas):
         self._desenha()
 
     def _desenha(self):
+        """
+        Renderiza graficamente os elementos da carta no canvas.
+
+        Limpa o canvas atual e redesenha a sombra, o fundo, as bordas de seleção
+        e os elementos de texto (valores e naipes) dependendo do estado atual 
+        (encoberta, selecionada ou pequena).
+        """
         self.delete("all")
         r = 6
         w, h = self.largura, self.altura
@@ -125,6 +147,20 @@ class CartaWidget(tk.Canvas):
                          fill=cor, anchor="se")
 
     def _rounded_rect(self, x1, y1, x2, y2, r, **kw):
+        """
+        Desenha um retângulo com cantos arredondados utilizando polígonos suavizados.
+
+        Argumentos:
+            x1 (int): Coordenada X do ponto superior esquerdo.
+            y1 (int): Coordenada Y do ponto superior esquerdo.
+            x2 (int): Coordenada X do ponto inferior direito.
+            y2 (int): Coordenada Y do ponto inferior direito.
+            r (int): Raio de curvatura dos cantos.
+            **kw: Propriedades de estilização do Tkinter (ex: fill, outline, width).
+
+        Returno:
+            int: O ID do objeto canvas gerado pelo 'create_polygon'.
+        """
         pts = [x1 + r, y1, x2 - r, y1, x2, y1,
                x2, y1 + r, x2, y2 - r, x2, y2,
                x2 - r, y2, x1 + r, y2, x1, y2,
@@ -132,18 +168,37 @@ class CartaWidget(tk.Canvas):
         return self.create_polygon(pts, smooth=True, **kw)
 
     def set_selecionada(self, v: bool):
+        """
+        Modifica o estado de seleção da carta e atualiza sua borda visual.
+
+        Argumento:
+            v (bool): True para destacar a carta como selecionada, False para o estado normal.
+        """
         self._selecionada = v
         self._desenha()
 
     def set_carta(self, carta_str: str, encoberta=False):
+        """
+        Atualiza o valor textual da carta e sua visibilidade, forçando o redesenho.
+
+        Argumento:
+            carta_str (str): Nova string identificadora da carta.
+            encoberta (bool, opcional): True se a carta deve ser exibida virada para baixo. Defaults to False.
+        """
         self._carta = carta_str
         self._encoberta = encoberta
         self._desenha()
 
 
-# ─────────────────────────── App Principal ───────────────────────────
 class TrucoApp(tk.Tk):
+    '''
+    Representa o jogo em si para o jogador, ou seja, o a conexão com o servidor, entrada
+    de dados do jogador e exibição dos estados do jogo
+    '''
     def __init__(self):
+        """
+        Inicializa a aplicação do Truco, configura a janela principal e define os estados iniciais.
+        """
         super().__init__()
         self.title("Truco Paulista")
         self.configure(bg=BG_DARK)
@@ -163,12 +218,22 @@ class TrucoApp(tk.Tk):
         self._ultimo_estado_ui = {}
         self._dialogo_truco = None
         self._receiver_thread = None
+        self._estado_rodada = "NORMAL"
 
         self._build_ui()
         self.protocol("WM_DELETE_WINDOW", self._on_close)
 
-    # ─── Construção UI ───
+    
     def _build_ui(self):
+        """
+        Gera e organiza todos os elementos da interface gráfica.
+
+        Divide o layout entre:
+            -> topo (placar);
+            -> corpo esquerdo (área verde do feltro da mesa, cartas jogadas, cartas da mão e botões de ação);
+            -> painel direito (configurações de rede e terminal de logs).
+        """
+        # Inicia Topo:
         top = tk.Frame(self, bg=BG_DARK, pady=6)
         top.pack(fill="x")
         tk.Label(top, text="♠  TRUCO PAULISTA  ♣",
@@ -182,6 +247,8 @@ class TrucoApp(tk.Tk):
         corpo = tk.Frame(self, bg=BG_FELT)
         corpo.pack(fill="both", expand=True)
 
+
+        # Inicia Corpo Esquerdo:
         mesa_frame = tk.Frame(corpo, bg=BG_FELT, padx=16, pady=12)
         mesa_frame.pack(side="left", fill="both", expand=True)
 
@@ -237,6 +304,8 @@ class TrucoApp(tk.Tk):
                                      font=FONT_STATUS, fg=TEXT_MUTED, bg=BG_FELT)
         self._lbl_status.pack(anchor="w", pady=(6, 0))
 
+
+        # Aqui inicia o corpo direito:
         painel = tk.Frame(corpo, bg=BG_DARK, width=260, padx=12, pady=12)
         painel.pack(side="right", fill="y")
         painel.pack_propagate(False)
@@ -290,7 +359,18 @@ class TrucoApp(tk.Tk):
         self._txt_log.pack(side="left", fill="both", expand=True)
         sb.pack(side="right", fill="y")
 
-    def _btn(self, parent, texto, cor, cmd):
+
+
+    def _btn(self, parent, texto, cor, cmd) -> tk.Button:
+        """
+        Cria um botão.
+
+        Argumentos:
+            parent (tk.Widget): O container pai do botão.
+            texto (str): O rótulo/texto visível no botão.
+            cor (str): Código hexadecimal ou nome da cor de fundo.
+            cmd (callable): Função/Callback executada no clique do botão.
+        """
         b = tk.Button(parent, text=texto, font=FONT_LABEL,
                       bg=cor, fg=TEXT_LIGHT, relief="flat",
                       padx=10, pady=6, cursor="hand2",
@@ -299,8 +379,13 @@ class TrucoApp(tk.Tk):
                       command=cmd)
         return b
 
-    # ─── Conexão ───
+    
     def _conectar(self):
+        """
+        Inicia o processo de conexão disparando uma thread.
+        Valida se o cliente já está conectado para evitar conexões duplicadas.
+        Extrai o IP e a Porta inseridos nos campos de entrada.
+        """
         if self._conectado:
             self._log("Já conectado.")
             return
@@ -310,6 +395,16 @@ class TrucoApp(tk.Tk):
                          args=(ip, porta), daemon=True).start()
 
     def _thread_conectar(self, ip, porta):
+        """
+        Executa em background a conexão com o servidor via socket.
+        Estabelece o socket, decodifica a mensagem de boas-vindas do servidor para 
+        extrair o ID do jogador, tenta vincular o segmento de SharedMemory ("MesaTruco") 
+        e inicia os loops de controle da partida.
+
+        Argumentos:
+            ip (str): Endereço IP do servidor do jogo.
+            porta (int): Porta TCP aberta do servidor.
+        """
         try:
             self._sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             self._sock.settimeout(10)
@@ -332,90 +427,116 @@ class TrucoApp(tk.Tk):
             self._log(f"✗ Erro: {e}")
 
     def _on_conectado(self):
+        """
+        Modifica os componentes gráficos após o sucesso da conexão de rede.
+
+        Desativa o botão de conexão, atualiza o rótulo com o ID do jogador e 
+        dispara a thread secundária `_receiver_loop` voltada a escutar o socket.
+        """
         self._lbl_id.config(text=f"Seu ID: {self._meu_id}")
         self._btn_conectar.config(state="disabled", text="Conectado")
         self._log("Aguardando o jogo iniciar...")
         self._receiver_thread = threading.Thread(target=self._receiver_loop, daemon=True)
         self._receiver_thread.start()
 
-    # ─── Receiver de mensagens do servidor ───
+    
     def _receiver_loop(self):
+        """
+        Loop em thread separada responsável por escutar continuamente dados vindos do socket.
+
+        Enquanto o jogo estiver rodando, captura strings do servidor e delega de forma 
+        segura à thread principal do Tkinter after(0, ...) o processamento das regras de negócio.
+        """
         while self._running and self._conectado:
             try:
                 data = self._sock.recv(1024).decode()
                 if not data:
                     break
-                self.after(0, self._processa_mensagem, data)
+                # agenda a execução de _processa_mensagem na thread principal do Tkinter assim que possível.
+                self.after(0, self._processa_mensagem, data) 
             except Exception as e:
-                self.after(0, self._log, f"Erro no receiver: {e}")
-                break
+                continue
 
     def _processa_mensagem(self, msg: str):
+        """
+        Interpreta comandos e eventos de rede recebidos do servidor.
+
+        Trata confirmações de jogadas, distribuição de novas cartas, requisições de 
+        Truco de oponentes, encerramento de partidas e mensagens de erro
+
+        Argumento:
+            msg (str): Mensagem textual vinda do protocolo do servidor de Truco.
+        """
         msg = msg.strip()
-        
-        # 1. Trata JOGADA_OK, que pode vir colado com as Cartas
+
         if "JOGADA_OK" in msg:
             self._log("✓ Comando executado com sucesso.")
 
-        # 2. Trata recebimento de Cartas usando 'in'
         if "Cartas:" in msg:
             self._log("📨 Recebendo novas cartas...")
-            
-            # Corta do 'C' de Cartas até o ']' do final da lista
             inicio = msg.find("Cartas:")
             fim = msg.find("]", inicio)
-            
             if inicio != -1 and fim != -1:
                 mensagem_limpa = msg[inicio:fim + 1]
             else:
-                mensagem_limpa = msg[inicio:] # Fallback caso falte o colchete
-                
+                mensagem_limpa = msg[inicio:]
             try:
                 self._recebe_cartas(mensagem_limpa)
-                
-                # Reavalia a vez lendo a memória
-                estado = self._ler_estado()
-                if estado and estado.get("vez") == self._meu_id:
-                    self._set_minha_vez(True)
             except Exception as e:
                 self._log(f"Erro interno ao processar cartas: {e}")
 
-        # 3. Trata pedido de Truco
         if "TRUCO_PEDIDO:" in msg:
             try:
-                # Corta a string a partir de TRUCO_PEDIDO para evitar lixo no começo
                 parte = msg[msg.find("TRUCO_PEDIDO:"):]
                 valor = int(parte.split(":")[1].split()[0])
                 self._mostrar_dialogo_truco(valor)
             except Exception as e:
                 self._log(f"Erro ao interpretar pedido de truco: {e}")
 
-        # 4. Trata Fim de Jogo
         if "FIM_DE_JOGO:" in msg:
             self._log(f"🏁 {msg}")
             self._set_btns_ativos(False)
             self._minha_vez = False
             messagebox.showinfo("Fim de jogo", msg)
 
-        # 5. Outros
         if "COMANDO_INVALIDO" in msg:
             self._log("✗ Comando inválido.")
-            
-        # 6. Só cai aqui se for uma mensagem completamente desconhecida
+
         if not any(x in msg for x in ["JOGADA_OK", "Cartas:", "TRUCO_PEDIDO:", "FIM_DE_JOGO:", "COMANDO_INVALIDO"]):
             self._log(f"{msg}")
 
-    # ─── Loop principal de jogo (monitora a memória) ───
+    
     def _loop_jogo(self):
+        """
+        Loop executado em segundo plano para inspecionar a memória compartilhada.
+
+        Lê a estrutura da mesa a cada 100ms e agenda atualizações visuais
+        e computa se o turno atual de jogo pertence ao usuário local baseado na variável _meu_id.
+        """
         while self._running and self._conectado:
             estado = self._ler_estado()
             if estado:
                 self.after(0, self._atualiza_ui, estado)
-                self.after(0, self._set_minha_vez, estado["vez"] == self._meu_id)
+                eh_minha_vez = estado["vez"] == self._meu_id
+                estado_normal = estado.get("estado_rodada") == "NORMAL"
+                if eh_minha_vez and estado_normal:
+                    self.after(0, self._set_minha_vez, True)
+                else:
+                    self.after(0, self._set_minha_vez, False)
             time.sleep(0.1)
 
-    # ─── Atualização de UI ───
+    
     def _atualiza_ui(self, estado: dict):
+        """
+        Atualiza o estado visual geral da interface gráfica baseado em um dicionário de estados.
+
+        Evita renderizações desnecessárias se o estado for idêntico ao último. Atualiza 
+        os rótulos de placar, número de quedas, pontuação em jogo da rodada, a carta do 
+        Vira e reconstrói as cartas da mesa central.
+
+        Argumento:
+            estado (dict): Dicionário contendo dados extraídos da memória compartilhada.
+        """
         if self._ultimo_estado_ui == estado:
             return
         self._ultimo_estado_ui = estado
@@ -431,9 +552,20 @@ class TrucoApp(tk.Tk):
         vira_str = estado.get("vira", "")
         self._vira_widget.set_carta(vira_str)
 
+        self._estado_rodada = estado.get("estado_rodada", "NORMAL")
+
         self._desenha_mesa(estado.get("mesa", {}))
 
     def _desenha_mesa(self, mesa: dict):
+        """
+        Limpa e redesenha a região central de cartas jogadas na mesa.
+
+        Gera cartas em miniatura dinamicamente para cada carta revelada 
+        ou coberta que foi jogada pelos participantes.
+
+        Argumento:
+            mesa (dict): Mapeamento de IDs de jogadores para as propriedades das suas cartas na mesa.
+        """
         for w in self._mesa_frame.winfo_children():
             w.destroy()
         if not mesa:
@@ -453,6 +585,13 @@ class TrucoApp(tk.Tk):
                      font=FONT_STATUS, fg=TEXT_LIGHT, bg=BG_FELT).pack()
 
     def _recebe_cartas(self, dados: str):
+        """
+        Processa e extrai a lista de strings com os nomes das cartas enviadas pelo servidor.
+        Limpa a seleção atual, armazena as novas cartas locais e aciona o redesenho da mão.
+
+        Argumento:
+            dados (str): String formatada do tipo "Cartas:[A_COPAS, 2_OUROS, K_PAUS]".
+        """
         try:
             linha = dados.strip()
             inicio = linha.find("[")
@@ -470,6 +609,9 @@ class TrucoApp(tk.Tk):
         self._log(f"Suas cartas: {self._cartas_nomes}")
 
     def _desenha_mao(self):
+        """
+        Destrói e reconstrói os componentes gráficos da mão de cartas do jogador.
+        """
         for w in self._mao_frame.winfo_children():
             w.destroy()
         self._cartas_widgets = []
@@ -486,7 +628,12 @@ class TrucoApp(tk.Tk):
             self._cartas_widgets.append(cw)
 
     def _seleciona_carta(self, idx: int):
-        if not self._minha_vez:
+        """
+        Gerencia o índice da carta atualmente escolhida para ser jogada.
+        A seleção é permitida apenas se for o turno do usuário e se não houver um pedido 
+        de truco pendente de resposta. Atualiza o contorno visual da carta selecionada.
+        """
+        if not self._minha_vez or self._estado_rodada != "NORMAL":
             return
         self._carta_selecionada = idx
         for i, cw in enumerate(self._cartas_widgets):
@@ -494,59 +641,113 @@ class TrucoApp(tk.Tk):
         self._log(f"Carta selecionada: [{idx}] {self._cartas_nomes[idx]}")
 
     def _set_minha_vez(self, v: bool):
+        """
+        Modifica a permissão de turno do jogador e altera os rótulos informativos de status.
+
+        Ativa ou desativa os botões de ação e exibe orientações ao usuário no rodapé,
+        baseando-se no fato do jogador possuir ou não cartas ou estar em meio a um aumento de aposta de Truco.
+
+        Argumento:
+            v (bool): True se passou a ser a vez do jogador atual, False caso contrário.
+        """
         self._minha_vez = v
         tem_cartas = bool(self._cartas_nomes)
-        ativo = v and tem_cartas
+        ativo = v and tem_cartas and self._estado_rodada == "NORMAL"
         self._set_btns_ativos(ativo)
-        if v and tem_cartas:
+        if v and tem_cartas and self._estado_rodada == "NORMAL":
             self._lbl_status.config(text="🎴 Sua vez! Selecione uma carta e jogue.",
                                      fg=BTN_GREEN)
         elif v and not tem_cartas:
             self._lbl_status.config(text="⏳ Aguardando suas cartas...",
                                      fg=TEXT_MUTED)
+        elif v and self._estado_rodada != "NORMAL":
+            self._lbl_status.config(text="⏳ Aguardando resposta do adversário...",
+                                     fg=TEXT_MUTED)
         else:
             self._lbl_status.config(text="⏳ Aguardando a jogada do adversário...",
                                      fg=TEXT_MUTED)
 
+
     def _set_btns_ativos(self, ativo: bool):
+        """
+        Altera o estado funcional dos botões de interação do jogo (Jogar, Coberta, Truco).
+        """
         estado = "normal" if ativo else "disabled"
         for b in (self._btn_jogar, self._btn_coberta, self._btn_truco):
             b.config(state=estado)
 
-    # ─── Ações do jogador ───
+    
     def _remover_carta_local(self, idx: int):
+        """
+        Elimina uma carta da coleção interna do cliente e reorganiza a mão.
+
+        Argumento:
+            idx (int): Posição da lista da carta que deve ser desfeita.
+        """
         if 0 <= idx < len(self._cartas_nomes):
             self._cartas_nomes.pop(idx)
             self._carta_selecionada = -1
             self._desenha_mao()
 
     def _jogar(self):
+        """
+        Dispara a ação de jogar a carta selecionada aberta.
+
+        Verifica pré-condições de validação como checar se uma carta foi previamente
+        clicada e se a rodada não se encontra congelada devido a uma chamada de truco.
+        """
         if self._carta_selecionada < 0:
             messagebox.showwarning("Selecione uma carta",
                                    "Clique em uma carta antes de jogar.")
+            return
+        if self._estado_rodada != "NORMAL":
+            self._log("Aguardando resposta do truco, não pode jogar agora.")
             return
         idx = self._carta_selecionada
         self._remover_carta_local(idx)
         self._enviar_comando(f"JOGAR:{idx}")
 
     def _jogar_coberta(self):
+        """
+        Dispara a ação de ocultar e jogar a carta selecionada de forma coberta.
+        Seguem as mesmas restrições e validações do método _jogar.
+        """
         if self._carta_selecionada < 0:
             messagebox.showwarning("Selecione uma carta",
                                    "Clique em uma carta antes de jogar coberta.")
+            return
+        if self._estado_rodada != "NORMAL":
+            self._log("Aguardando resposta do truco, não pode jogar agora.")
             return
         idx = self._carta_selecionada
         self._remover_carta_local(idx)
         self._enviar_comando(f"JOGAR:{idx}:COBERTA")
 
     def _pedir_truco(self):
+        """
+        Envia a string de aumento de pontos ("TRUCO") para o servidor de jogos.
+        """
+        if self._estado_rodada != "NORMAL":
+            self._log("Não é possível pedir truco agora.")
+            return
         self._enviar_comando("TRUCO")
 
     def _sair(self):
+        """
+        Oferece ao usuário um prompt de confirmação para abandonar o jogo ativo.
+
+        Em caso positivo, notifica o servidor e fecha os recursos da aplicação.
+        """
         if messagebox.askyesno("Sair", "Deseja abandonar a partida?"):
             self._enviar_comando("/sair")
             self._on_close()
 
     def _enviar_comando(self, cmd: str):
+        """
+        Envia comando para o servidor pelo socket.
+        Argumento:
+            cmd (str): O texto com o comando no formato esperado pelo protocolo (ex: "JOGAR:1").
+        """
         if not self._sock or not self._minha_vez:
             return
         try:
@@ -557,8 +758,13 @@ class TrucoApp(tk.Tk):
         except Exception as e:
             self._log(f"✗ Erro ao enviar: {e}")
 
-    # ─── Diálogo de resposta ao Truco ───
+    
     def _mostrar_dialogo_truco(self, valor: int):
+        """
+        Gera uma janela suspensa que força o jogador a responder ao Truco.
+        Argumento:
+            valor (int): O novo valor em pontos que a rodada passará a valer caso aceito.
+        """
         if self._dialogo_truco is not None:
             return
         top = tk.Toplevel(self)
@@ -580,12 +786,20 @@ class TrucoApp(tk.Tk):
         self._dialogo_truco = top
 
     def _responde_truco(self, aceitou: bool, janela: tk.Toplevel):
+        """
+        Envia a resposta de contra-proposta de truco selecionada na modal de diálogo.
+        Destrói a janela de diálogo imediatamente após o clique e envia "ACEITAR" ou "CORRER".
+
+        Argumentos:
+            aceitou (bool): True se o jogador clicou para aceitar a aposta, False se decidiu correr.
+            janela (tk.Toplevel): Instância do componente de diálogo que será encerrado.
+        """
         janela.destroy()
         self._dialogo_truco = None
-        
+
         if not self._sock:
             return
-            
+
         try:
             if aceitou:
                 self._sock.send(b"ACEITAR")
@@ -595,11 +809,12 @@ class TrucoApp(tk.Tk):
                 self._log("▶ Resposta enviada: CORRER")
         except Exception as e:
             self._log(f"✗ Erro ao responder truco: {e}")
-            
-    
 
-    # ─── Leitura da memória compartilhada ───
+    
     def _ler_estado(self) -> dict | None:
+        """
+        Acessa e decodifica a memória compartilhada para retornar o estado atual do jogo.
+        """
         if not self._shared_mem:
             return None
         try:
@@ -608,18 +823,26 @@ class TrucoApp(tk.Tk):
         except Exception:
             return None
 
-    # ─── Log ───
+    
     def _log(self, msg: str):
+        """
+        Escreve  uma linha informativa no campo de logs textual.
+        Argumento:
+            msg (str): A string de texto a ser adicionada ao histórico.
+        """
         def _inner():
             self._txt_log.config(state="normal")
-            ts = time.strftime("%H:%M:%S")
+            ts = time.strftime("%H:%M:%S")  # Obtém o horário atual no formato HH:MM:SS.
             self._txt_log.insert("end", f"[{ts}] {msg}\n")
-            self._txt_log.see("end")
-            self._txt_log.config(state="disabled")
+            self._txt_log.see("end")  # Faz a rolagem automática para a última linha inserida.
+            self._txt_log.config(state="disabled") # Agenda a atualização da interface para a thread principal do Tkinter.
         self.after(0, _inner)
 
-    # ─── Fechamento ───
+    
     def _on_close(self):
+        """
+        Fecha e desaloca todos os recursos abertos pela aplicação no sistema operacional.
+        """
         self._running = False
         if self._sock:
             try:
@@ -634,7 +857,7 @@ class TrucoApp(tk.Tk):
         self.destroy()
 
 
-# ─────────────────────────── Entrypoint ───────────────────────────
+
 if __name__ == "__main__":
     app = TrucoApp()
     app.mainloop()

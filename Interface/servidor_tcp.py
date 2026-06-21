@@ -29,7 +29,8 @@ def atualiza_memoria_compartilhada(shared_memory: SharedMemory, partida: Partida
         "valor_rodada": partida.rodada_atual.valor_apostado,
         "queda_atual": partida.rodada_atual.mesa.get_queda_atual(),
         "vira": str(vira),
-        "mesa": cartas_mesa
+        "mesa": cartas_mesa,
+        "estado_rodada": partida.rodada_atual.estado.name
     }
 
     dados_json: str = json.dumps(estado_compartilhado)
@@ -49,8 +50,13 @@ def enviar_cartas_para_todos(conexoes, partida):
 
 
 def verifica_e_envia_novas_cartas(conexoes, partida):
-    """Se a mesa estiver vazia (nova rodada), envia as cartas para todos."""
-    if not partida.rodada_atual.mesa.jogadas:
+    """
+    Envia novas cartas apenas se for o início de uma rodada:
+    mesa vazia E queda atual == 1.
+    """
+    if (not partida.rodada_atual.mesa.jogadas and 
+        partida.rodada_atual.mesa.get_queda_atual() == 1):
+        print("🔄 Nova rodada detectada - enviando cartas.")
         enviar_cartas_para_todos(conexoes, partida)
         return True
     return False
@@ -90,9 +96,7 @@ def main() -> None:
         atualiza_memoria_compartilhada(shared_memory, partida)
 
         while not partida.get_finalizada():
-            # Se a mesa estiver vazia (nova rodada), já enviamos as cartas
-            # Mas pode ter acontecido de a rodada terminar e a nova rodada ser criada
-            # sem que o loop tenha percebido; então verificamos novamente.
+            # Verifica se é uma nova rodada e envia cartas (caso não tenha sido feito)
             verifica_e_envia_novas_cartas(conexoes, partida)
             atualiza_memoria_compartilhada(shared_memory, partida)
 
@@ -119,29 +123,39 @@ def main() -> None:
                     break
                 elif msg.startswith("JOGAR:"):
                     partes = msg.split(":")
-                    indice_carta = int(partes[1])
+                    try:
+                        indice_carta = int(partes[1])
+                    except (IndexError, ValueError):
+                        socket_atual.send(b"COMANDO_INVALIDO")
+                        continue
+
                     encoberta = False
                     if len(partes) > 2 and partes[2] == "COBERTA":
                         encoberta = True
+
+                    # Valida o índice
+                    mao = partida.jogadores[jogador_da_vez].get_cartas()
+                    if indice_carta < 0 or indice_carta >= len(mao):
+                        socket_atual.send(b"COMANDO_INVALIDO")
+                        continue
+
+                    # Processa a jogada
                     partida.recebe_comando_carta(jogador_da_vez, indice_carta, encoberta)
-                    
-                    # 1º Atualizamos a memória com a jogada feita!
                     atualiza_memoria_compartilhada(shared_memory, partida)
-                    
-                    # 2º Avisamos os clientes
                     socket_atual.send(b"JOGADA_OK")
-                    
-                    # 3º Se a rodada virou, envia as novas cartas
+
+                    # Se a partida acabou, sai do loop
+                    if partida.get_finalizada():
+                        break
+
+                    # Imediatamente verifica se a rodada terminou e envia novas cartas
                     verifica_e_envia_novas_cartas(conexoes, partida)
 
                 elif msg == "TRUCO":
                     partida.recebe_comando_truco(jogador_da_vez)
-                    
-                    # 1. Alguém pediu truco, o estado mudou. Atualiza a memória PRIMEIRO!
                     atualiza_memoria_compartilhada(shared_memory, partida)
-                    
                     socket_atual.send(b"JOGADA_OK")
-                    
+
                     if partida.rodada_atual.estado == EstadoRodada.AGUARDANDO_RESPOSTA:
                         adversario = 1 - jogador_da_vez
                         socket_adversario = conexoes[adversario]
@@ -162,21 +176,15 @@ def main() -> None:
                         else:
                             partida.responde_aumento(adversario, False)
 
-                        # 2. O adversário respondeu. Atualiza a memória PRIMEIRO!
                         atualiza_memoria_compartilhada(shared_memory, partida)
-                        # Só depois verifica se o jogo acabou ou envia cartas
                         verifica_e_envia_novas_cartas(conexoes, partida)
-                        
                     else:
-                        # 3. Se o truco não entrou em espera. Atualiza a memória PRIMEIRO!
                         atualiza_memoria_compartilhada(shared_memory, partida)
-                        # Só depois verifica se o jogo acabou ou envia cartas
                         verifica_e_envia_novas_cartas(conexoes, partida)
                 else:
                     socket_atual.send(b"COMANDO_INVALIDO")
 
             elif partida.rodada_atual.estado == EstadoRodada.AGUARDANDO_RESPOSTA:
-                # Segurança: se por algum motivo ficar preso nesse estado, apenas espera
                 time.sleep(0.1)
             else:
                 time.sleep(0.1)
