@@ -1,8 +1,8 @@
 from enum import Enum
-from Carta import Carta
-from Baralho import Baralho
-from Mesa import Mesa, Resultado_Queda
-from Jogador import Jogador
+from Testes.Carta import Carta
+from Testes.Baralho import Baralho
+from Testes.Mesa import Mesa, Resultado_Queda
+from Testes.Jogador import Jogador
 
 class EstadoRodada(Enum):
     NORMAL = 0

@@ -1,4 +1,4 @@
-from Partida import Partida, Resultado_Queda
+from Testes.Partida import Partida, Resultado_Queda
 
 def main():
     partida = Partida(num_jogadores=2)

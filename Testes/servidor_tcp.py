@@ -3,8 +3,8 @@ import json
 import time
 from multiprocessing.shared_memory import SharedMemory
 
-from Partida import Partida
-from Carta import Carta
+from Testes.Partida import Partida
+from Testes.Carta import Carta
 
 def atualiza_memoria_compartilhada(shared_memory: SharedMemory, partida: Partida):
     cartas_mesa: dict[str, dict[str, str | bool]] = {}

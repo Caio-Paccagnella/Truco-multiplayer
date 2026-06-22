@@ -1,6 +1,6 @@
 from enum import Enum
 from dataclasses import dataclass
-from Carta import Carta
+from Testes.Carta import Carta
 
 
 class Acao(Enum):

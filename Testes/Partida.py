@@ -1,7 +1,7 @@
 from dataclasses import dataclass
-from Jogador import Jogador
-from Rodada import Rodada, EstadoRodada
-from Mesa import Resultado_Queda
+from Testes.Jogador import Jogador
+from Testes.Rodada import Rodada, EstadoRodada
+from Testes.Mesa import Resultado_Queda
 
 
 @dataclass
@@ -75,5 +75,5 @@ class Partida:
             self.finalizada = True
         else:
             self.nova_rodada()
-            
+        
             

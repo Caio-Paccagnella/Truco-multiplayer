@@ -1,5 +1,5 @@
 #Esta biblioteca representa a implementação de um tipo abstrato baralho
-from Carta import Carta, Naipe
+from Testes.Carta import Carta, Naipe
 import random
 
 

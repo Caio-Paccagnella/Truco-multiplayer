@@ -1,5 +1,5 @@
 from enum import Enum
-from Carta import Carta, Naipe
+from Testes.Carta import Carta, Naipe
 
 class Resultado_Queda(Enum):
     VITORIA_TIME1 = 1
