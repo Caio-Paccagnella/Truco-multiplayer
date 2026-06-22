@@ -1,3 +1,8 @@
+"""
+Este arquivo representa o servidor, que se comecta aos clientes para controlar
+o estado da partida de truco.
+"""
+
 import socket
 import json
 import time
@@ -9,7 +14,12 @@ from Rodada import EstadoRodada
 
 
 def atualiza_memoria_compartilhada(shared_memory: SharedMemory, partida: Partida):
+    '''
+    Atualiza *shared_memory* com base no estado atual de *partida*, considerando-se
+    as cartas jogadas, a vira, a vez atual e o placar.
+    ''' 
     cartas_mesa: dict[str, dict[str, str | bool]] = {}
+    # Manipula as cartas com status positivo de "encoberta".
     for id_jogador, (carta, encoberta) in partida.rodada_atual.mesa.jogadas.items():
         if encoberta:
             cartas_mesa[str(id_jogador)] = {
@@ -24,9 +34,10 @@ def atualiza_memoria_compartilhada(shared_memory: SharedMemory, partida: Partida
 
     vira: Carta = partida.rodada_atual.mesa.get_vira()
     estado_compartilhado = {
-        "placar": f" Time 1: {partida.placar.time1} X  Time 2: {partida.placar.time2}",
+        "placar": f" Time 1: {partida.placar.time1} X  {partida.placar.time2} :Time 2",
         "vez": partida.rodada_atual.vez,
         "valor_rodada": partida.rodada_atual.valor_apostado,
+        "quem_trucou": partida.rodada_atual.id_jogador_aumentou_valor,
         "queda_atual": partida.rodada_atual.mesa.get_queda_atual(),
         "vira": str(vira),
         "mesa": cartas_mesa,
@@ -37,26 +48,27 @@ def atualiza_memoria_compartilhada(shared_memory: SharedMemory, partida: Partida
     shared_memory.buf[:1024] = dados_json.encode("utf-8").ljust(1024, b" ")
 
 
-def enviar_cartas_para_todos(conexoes, partida):
+def enviar_cartas_para_todos(conexoes: list[socket.socket], partida: Partida):
     """Envia as cartas de cada jogador para o respectivo socket."""
     for i, jogador in enumerate(partida.jogadores):
         mao = jogador.get_cartas()
         msg = f"Cartas:\n\n{mao}\n"
         try:
+            # Envia as cartas ao respectivo usuário.
             conexoes[i].send(msg.encode())
-            print(f"📤 Cartas enviadas para jogador {i}: {mao}")
+            print(f"->->-> Cartas enviadas para jogador {i}: {mao}")
         except Exception as e:
             print(f"Erro ao enviar cartas para jogador {i}: {e}")
 
 
-def verifica_e_envia_novas_cartas(conexoes, partida):
+def verifica_e_envia_novas_cartas(conexoes: list[socket.socket], partida: Partida) -> bool:
     """
     Envia novas cartas apenas se for o início de uma rodada:
-    mesa vazia E queda atual == 1.
+    mesa vazia e queda atual == 1.
     """
     if (not partida.rodada_atual.mesa.jogadas and 
         partida.rodada_atual.mesa.get_queda_atual() == 1):
-        print("🔄 Nova rodada detectada - enviando cartas.")
+        print("\n--- Nova rodada detectada ---\n")
         enviar_cartas_para_todos(conexoes, partida)
         return True
     return False
@@ -66,9 +78,11 @@ def main() -> None:
     shared_memory = None
     try:
         shared_memory = SharedMemory("MesaTruco", True, 1024)
+    # Caso o bloco já exista:    
     except:
         shared_memory = SharedMemory("MesaTruco", False)
 
+    # Padrão básico:
     num_jogadores: int = 2
     partida: Partida = Partida(num_jogadores)
     atualiza_memoria_compartilhada(shared_memory, partida)
@@ -104,31 +118,37 @@ def main() -> None:
                 jogador_da_vez = partida.rodada_atual.vez
                 socket_atual = conexoes[jogador_da_vez]
 
+                # Espera de 60 segundos
                 socket_atual.settimeout(60)
                 try:
+                    # Recebe um comando do cliente.
                     msg = socket_atual.recv(1024).decode().strip()
                 except socket.timeout:
+                    # Limite de tempo excedido
                     print(f"Timeout do jogador {jogador_da_vez}")
                     break
                 except Exception as e:
+                    # Outro erro
                     print(f"Erro ao receber do jogador {jogador_da_vez}: {e}")
                     break
 
                 if not msg:
                     break
-                print(f"Cliente {jogador_da_vez} enviou: {msg}")
+                print(f" >> Cliente {jogador_da_vez} enviou: {msg}")
 
-                if msg == "/sair":
-                    socket_atual.send(b"Saindo...\n")
+                if msg == "SAIR":
+                    socket_atual.send(b"\nSaindo...\n")
                     break
                 elif msg.startswith("JOGAR:"):
                     partes = msg.split(":")
                     try:
+                        # Pega o índice da carta escolhida
                         indice_carta = int(partes[1])
                     except (IndexError, ValueError):
                         socket_atual.send(b"COMANDO_INVALIDO")
                         continue
-
+                    
+                    # Verificação se a carta foi coberta ou não
                     encoberta = False
                     if len(partes) > 2 and partes[2] == "COBERTA":
                         encoberta = True
@@ -141,6 +161,7 @@ def main() -> None:
 
                     # Processa a jogada
                     partida.recebe_comando_carta(jogador_da_vez, indice_carta, encoberta)
+                    # Após a mudança do estado de partida, atualiza a memória compartilhada.
                     atualiza_memoria_compartilhada(shared_memory, partida)
                     socket_atual.send(b"JOGADA_OK")
 
@@ -161,16 +182,18 @@ def main() -> None:
                         socket_adversario = conexoes[adversario]
                         valor_atual = partida.rodada_atual.valor_apostado
                         socket_adversario.send(f"TRUCO_PEDIDO:{valor_atual}".encode())
-                        socket_adversario.settimeout(30)
+                        socket_adversario.settimeout(60)
                         try:
+                            # Aceitar ou Correr é a resposta
                             resposta = socket_adversario.recv(1024).decode().strip()
+                        # Se demorar para responder o pedido, o usuário correu.
                         except socket.timeout:
                             resposta = "CORRER"
                         except Exception as e:
                             print(f"Erro ao receber resposta do adversário: {e}")
                             resposta = "CORRER"
 
-                        print(f"Adversário {adversario} respondeu: {resposta}")
+                        print(f"Adversário de ID {adversario} respondeu: {resposta}")
                         if resposta == "ACEITAR":
                             partida.responde_aumento(adversario, True)
                         else:
@@ -189,10 +212,13 @@ def main() -> None:
             else:
                 time.sleep(0.1)
 
+            # Proteção:
             time.sleep(0.05)
 
         # Fim da partida
         vencedor = "Time 1" if partida.placar.time1 > partida.placar.time2 else "Time 2"
+        
+        # Envia mensagem de vencedor e fecha os sockets.
         for sock in conexoes:
             try:
                 sock.send(f"FIM_DE_JOGO: Vencedor: {vencedor}".encode())
@@ -205,14 +231,21 @@ def main() -> None:
     finally:
         if server:
             server.close()
+        # Fecha as conexões
         for conexao in conexoes:
             try:
                 conexao.close()
             except Exception:
                 pass
+        # Fecha e remove o bloco de memória compartilhada da RAM
         shared_memory.close()
         shared_memory.unlink()
 
 
 if __name__ == "__main__":
     main()
+    
+    
+    
+    
+    
