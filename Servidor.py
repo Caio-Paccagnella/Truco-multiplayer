@@ -1,5 +1,5 @@
 """
-Este arquivo representa o servidor, que se comecta aos clientes para controlar
+Este arquivo representa o servidor, que se conecta aos clientes para controlar
 o estado da partida de truco.
 """
 
@@ -45,6 +45,8 @@ def atualiza_memoria_compartilhada(shared_memory: SharedMemory, partida: Partida
     }
 
     dados_json: str = json.dumps(estado_compartilhado)
+    # Escreve os bytes na memória compartilhada.
+    # Completa o espaço que sobrar com o "ljust"
     shared_memory.buf[:1024] = dados_json.encode("utf-8").ljust(1024, b" ")
 
 
@@ -178,9 +180,10 @@ def main() -> None:
                     socket_atual.send(b"JOGADA_OK")
 
                     if partida.rodada_atual.estado == EstadoRodada.AGUARDANDO_RESPOSTA:
-                        adversario = 1 - jogador_da_vez
-                        socket_adversario = conexoes[adversario]
-                        valor_atual = partida.rodada_atual.valor_apostado
+                        # Considerando dois jogadores:
+                        adversario: int = 1 - jogador_da_vez
+                        socket_adversario: socket = conexoes[adversario]
+                        valor_atual: int = partida.rodada_atual.valor_apostado
                         socket_adversario.send(f"TRUCO_PEDIDO:{valor_atual}".encode())
                         socket_adversario.settimeout(60)
                         try:

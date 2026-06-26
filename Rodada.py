@@ -43,6 +43,7 @@ class Rodada:
         self.baralho.reconstroi()
         self.mesa.reseta_mesa()
         
+        
     def inicia_rodada(self):
         self.baralho.embaralha()
         vira = self.baralho.retira_uma()
@@ -50,6 +51,7 @@ class Rodada:
         for jogador in self.jogadores:    
             cartas_jogador = [self.baralho.retira_uma(), self.baralho.retira_uma(), self.baralho.retira_uma()]
             jogador.recebe_cartas(cartas_jogador)
+        
         
     def pode_aumento(self, id_jogador_atual: int) -> bool:
         # Verifica se um jogador pode aumentar o valor apostado.
@@ -63,9 +65,11 @@ class Rodada:
         time_que_aumentou = self.id_jogador_aumentou_valor % 2       
         return time_atual != time_que_aumentou
     
+    
     def sinaliza_pedido_aumento(self, id_autor: int):
         self.estado = EstadoRodada.AGUARDANDO_RESPOSTA
         self.id_jogador_aumentou_valor = id_autor
+    
     
     def verifica_valor_aumento(self) -> int:
         if self.valor_apostado == 12:
@@ -73,9 +77,11 @@ class Rodada:
         valores: dict[int, int] = {1: 3, 3: 6, 6: 9, 9: 12}
         return valores.get(self.valor_apostado)
     
+    
     def aceita_aumento(self):
         self.valor_apostado = self.verifica_valor_aumento()
         self.estado = EstadoRodada.NORMAL
+            
             
     def computa_jogada(self, id_jogador: int, indice_carta: int, encoberta: bool) -> bool:
         

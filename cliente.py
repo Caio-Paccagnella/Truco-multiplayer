@@ -31,8 +31,6 @@ COLOR_BLUE_TEXT = "#3A5AAB"
 
 # Paleta de fontes:
 FONT_TITLE    = ("Georgia", 22, "bold")
-FONT_CARD     = ("Georgia", 18, "bold")
-FONT_CARD_SM  = ("Georgia", 11)
 FONT_LABEL    = ("Helvetica", 10, "bold")
 FONT_BODY     = ("Helvetica", 10)
 FONT_STATUS   = ("Helvetica", 9, "italic")
@@ -188,11 +186,12 @@ class CartaWidget(tk.Canvas):
 
     def set_carta(self, carta_str: str, encoberta: bool = False):
         """
-        Atualiza o valor textual da carta e sua visibilidade, forçando o redesenho.
+        Atualiza o valor textual da carta e sua visibilidade, redesenhando ela posteriormente.
         """
         self.carta = carta_str
         self.encoberta = encoberta
         self._desenha()
+
 
 
 class TrucoApp(tk.Tk):
@@ -204,12 +203,12 @@ class TrucoApp(tk.Tk):
         """
         Inicializa a aplicação do Truco, configura a janela principal e define os estados iniciais.
         """
-        super().__init__()
+        super().__init__() # Herda tudo de Tk
         self.title("Truco Paulista")
         self.configure(bg=BG_DARK)
         self.resizable(False, False)
 
-        # Estado - Atributos privados
+        # Estado - Atributos privados (uso do _)
         self._sock: socket.socket | None = None
         self._shared_mem: SharedMemory | None = None
         self._meu_id: int = -1
@@ -256,8 +255,6 @@ class TrucoApp(tk.Tk):
         # Divide a tela em esquerda (Mesa) e direita (Painel)
         corpo = tk.Frame(self, bg=BG_FELT)
         corpo.pack(fill="both", expand=True)
-
-
 
         # Inicia Corpo Esquerdo - A Mesa do Jogo:
         mesa_frame = tk.Frame(corpo, bg=BG_FELT, padx=16, pady=12)
@@ -319,7 +316,6 @@ class TrucoApp(tk.Tk):
         self._lbl_status = tk.Label(mesa_frame, text="Conecte-se ao servidor para jogar.",
                                      font=FONT_STATUS, fg=TEXT_MUTED, bg=BG_FELT)
         self._lbl_status.pack(anchor="w", pady=(6, 0))
-
 
         # Inicia Corpo Direito - Rede e Logs:
         painel = tk.Frame(corpo, bg=BG_DARK, width=260, padx=12, pady=12)
@@ -443,7 +439,7 @@ class TrucoApp(tk.Tk):
         Modifica os componentes gráficos após o sucesso da conexão de rede.
 
         Desativa o botão de conexão, atualiza o rótulo com o ID do jogador e 
-        dispara a thread secundária `_receiver_loop` voltada a escutar o socket.
+        dispara a thread secundária "_receiver_loop" para escutar o socket.
         """
         self._lbl_id.config(text=f"Seu ID: {self._meu_id}")
         self._btn_conectar.config(state="disabled", text="Conectado!")
@@ -461,6 +457,7 @@ class TrucoApp(tk.Tk):
         """
         while self._running and self._conectado:
             try:
+                # Recebe a mensagem do servidor e verifica o próximo passo.
                 data = self._sock.recv(1024).decode()
                 if not data:
                     break
@@ -565,6 +562,7 @@ class TrucoApp(tk.Tk):
 
         self._desenha_mesa(estado.get("mesa", {}))
 
+
     def _desenha_mesa(self, mesa: dict):
         """
         Limpa e redesenha a região central de cartas jogadas na mesa.
@@ -649,14 +647,17 @@ class TrucoApp(tk.Tk):
                      fg=TEXT_MUTED, bg=BG_FELT, wraplength=85).pack()
             self._cartas_widgets.append(cw)
 
+
     # Retorna uma função.
     def _cria_evento_clique(self, idx: int):
         '''
         Cria a mecânica de mostrar a seleção da carta com índice *idx*.
         '''
+        # Faz isso, porque precisa retornar função.
         def aux(evento):
             self._seleciona_carta(idx)
         return aux
+        
         
     def _seleciona_carta(self, idx: int):
         """
@@ -674,6 +675,7 @@ class TrucoApp(tk.Tk):
             cw.set_selecionada(i == idx)
             i += 1
         self._log(f"Carta selecionada: [{idx}] {self._cartas_nomes[idx]}")
+
 
     def _set_minha_vez(self, v: bool):
         """
@@ -729,6 +731,7 @@ class TrucoApp(tk.Tk):
             self._carta_selecionada = -1
             self._desenha_mao()
 
+
     def _jogar(self):
         """
         Dispara a ação de jogar a carta selecionada aberta.
@@ -737,8 +740,7 @@ class TrucoApp(tk.Tk):
         clicada e se a rodada não se encontra congelada devido a uma chamada de truco.
         """
         if self._carta_selecionada < 0:
-            messagebox.showwarning("Selecione uma carta",
-                                   "Clique em uma carta antes de jogar.")
+            messagebox.showwarning("Selecione uma carta", "Clique em uma carta antes de jogar.")
             return
         if self._estado_rodada != "NORMAL":
             self._log("Aguardando resposta do truco, não pode jogar agora.")
@@ -747,14 +749,14 @@ class TrucoApp(tk.Tk):
         self._remover_carta_local(idx)
         self._enviar_comando(f"JOGAR:{idx}")
 
+
     def _jogar_coberta(self):
         """
         Dispara a ação de ocultar e jogar a carta selecionada de forma coberta.
         Seguem as mesmas restrições e validações do método _jogar.
         """
         if self._carta_selecionada < 0:
-            messagebox.showwarning("Selecione uma carta",
-                                   "Clique em uma carta antes de jogar coberta.")
+            messagebox.showwarning("Selecione uma carta", "Clique em uma carta antes de jogar coberta.")
             return
         if self._estado_rodada != "NORMAL":
             self._log("Aguardando resposta do truco, não pode jogar agora.")
@@ -762,6 +764,7 @@ class TrucoApp(tk.Tk):
         idx = self._carta_selecionada
         self._remover_carta_local(idx)
         self._enviar_comando(f"JOGAR:{idx}:COBERTA")
+
 
     def _pedir_truco(self):
         """
@@ -772,6 +775,7 @@ class TrucoApp(tk.Tk):
             return
         self._enviar_comando("TRUCO")
 
+
     def _sair(self):
         """
         Oferece ao usuário uma confirmação para abandonar o jogo ativo.
@@ -781,6 +785,7 @@ class TrucoApp(tk.Tk):
         if messagebox.askyesno("Sair", "Deseja abandonar a partida?"):
             self._enviar_comando("SAIR")
             self._on_close()
+
 
     def _enviar_comando(self, cmd: str):
         """
@@ -818,6 +823,7 @@ class TrucoApp(tk.Tk):
                  font=FONT_BODY, padx=10, pady=10).pack()
         frame = tk.Frame(top)
         frame.pack(pady=10)
+        
         # Funções Lambda para facilitar a organização
         btn_aceitar = tk.Button(frame, text="Aceitar", command=lambda: self._responde_truco(True, top),
                                 bg=BTN_GREEN, fg=TEXT_LIGHT, padx=15, pady=5)
@@ -826,6 +832,7 @@ class TrucoApp(tk.Tk):
                                bg=BTN_RED_BG, fg=TEXT_LIGHT, padx=15, pady=5)
         btn_correr.pack(side="left", padx=10)
         self._dialogo_truco = top
+
 
     def _responde_truco(self, aceitou: bool, janela: tk.Toplevel):
         """
@@ -861,12 +868,14 @@ class TrucoApp(tk.Tk):
         except Exception:
             return None
 
+
     def _inner(self, msg: str): 
         self._txt_log.config(state="normal")
         ts = time.strftime("%H:%M:%S")  # Obtém o horário atual no formato HH:MM:SS.
         self._txt_log.insert("end", f"[{ts}] {msg}\n")
         self._txt_log.see("end")  # Faz a rolagem automática para a última linha inserida.
         self._txt_log.config(state="disabled") # Agenda a atualização da interface para a thread principal do Tkinter.
+        
         
     def _log(self, msg: str):
         """
@@ -898,8 +907,6 @@ class TrucoApp(tk.Tk):
 if __name__ == "__main__":
     app = TrucoApp()
     app.mainloop()
-    
-    
     
     
     

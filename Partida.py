@@ -18,6 +18,7 @@ class Partida:
     finalizada: bool
 
     def __init__(self, num_jogadores: int):
+        # Controle de quantidade:
         if num_jogadores % 2 != 0 or num_jogadores > 6:
             num_jogadores = 4
             
